@@ -1,0 +1,446 @@
+[
+  {
+    "thai": "ฉัน",
+    "english": "I"
+  },
+  {
+    "thai": "คุณ",
+    "english": "YOU"
+  },
+  {
+    "thai": "เขา",
+    "english": "HE"
+  },
+  {
+    "thai": "พวกเรา",
+    "english": "WE"
+  },
+  {
+    "thai": "พวกเขา",
+    "english": "THEY"
+  },
+  {
+    "thai": "พ่อ",
+    "english": "FATHER"
+  },
+  {
+    "thai": "แม่",
+    "english": "MOTHER"
+  },
+  {
+    "thai": "พี่ชาย",
+    "english": "OLDER_BROTHER"
+  },
+  {
+    "thai": "น้องสาว",
+    "english": "YOUNGER_SISTER"
+  },
+  {
+    "thai": "เพื่อน",
+    "english": "FRIEND"
+  },
+  {
+    "thai": "ครู",
+    "english": "TEACHER"
+  },
+  {
+    "thai": "นักเรียน",
+    "english": "STUDENT"
+  },
+  {
+    "thai": "หมอ",
+    "english": "DOCTOR"
+  },
+  {
+    "thai": "ตำรวจ",
+    "english": "POLICE"
+  },
+  {
+    "thai": "คนหูหนวก",
+    "english": "DEAF_PEOPLE"
+  },
+  {
+    "thai": "วันนี้",
+    "english": "TODAY"
+  },
+  {
+    "thai": "พรุ่งนี้",
+    "english": "TOMORROW"
+  },
+  {
+    "thai": "เมื่อวาน",
+    "english": "YESTERDAY"
+  },
+  {
+    "thai": "ตอนเช้า",
+    "english": "MORNING"
+  },
+  {
+    "thai": "ตอนเที่ยง",
+    "english": "NOON"
+  },
+  {
+    "thai": "ตอนเย็น",
+    "english": "EVENING"
+  },
+  {
+    "thai": "กลางคืน",
+    "english": "NIGHT"
+  },
+  {
+    "thai": "ทุกวัน",
+    "english": "EVERYDAY"
+  },
+  {
+    "thai": "อดีต",
+    "english": "PAST"
+  },
+  {
+    "thai": "อนาคต",
+    "english": "FUTURE"
+  },
+  {
+    "thai": "กิน",
+    "english": "EAT"
+  },
+  {
+    "thai": "ดื่ม",
+    "english": "DRINK"
+  },
+  {
+    "thai": "นอน",
+    "english": "SLEEP"
+  },
+  {
+    "thai": "ตื่น",
+    "english": "WAKE_UP"
+  },
+  {
+    "thai": "ไป",
+    "english": "GO"
+  },
+  {
+    "thai": "มา",
+    "english": "COME"
+  },
+  {
+    "thai": "เดิน",
+    "english": "WALK"
+  },
+  {
+    "thai": "วิ่ง",
+    "english": "RUN"
+  },
+  {
+    "thai": "นั่ง",
+    "english": "SIT"
+  },
+  {
+    "thai": "ยืน",
+    "english": "STAND"
+  },
+  {
+    "thai": "ดู",
+    "english": "LOOK"
+  },
+  {
+    "thai": "เห็น",
+    "english": "SEE"
+  },
+  {
+    "thai": "ฟัง",
+    "english": "LISTEN"
+  },
+  {
+    "thai": "ได้ยิน",
+    "english": "HEAR"
+  },
+  {
+    "thai": "พูด",
+    "english": "SPEAK"
+  },
+  {
+    "thai": "อ่าน",
+    "english": "READ"
+  },
+  {
+    "thai": "เขียน",
+    "english": "WRITE"
+  },
+  {
+    "thai": "คิด",
+    "english": "THINK"
+  },
+  {
+    "thai": "รู้",
+    "english": "KNOW"
+  },
+  {
+    "thai": "เข้าใจ",
+    "english": "UNDERSTAND"
+  },
+  {
+    "thai": "ทำ",
+    "english": "DO"
+  },
+  {
+    "thai": "เล่น",
+    "english": "PLAY"
+  },
+  {
+    "thai": "เรียน",
+    "english": "STUDY"
+  },
+  {
+    "thai": "ทำงาน",
+    "english": "WORK"
+  },
+  {
+    "thai": "ซื้อ",
+    "english": "BUY"
+  },
+  {
+    "thai": "ชอบ",
+    "english": "LIKE"
+  },
+  {
+    "thai": "สอน",
+    "english": "TEACH"
+  },
+  {
+    "thai": "รัก",
+    "english": "LOVE"
+  },
+  {
+    "thai": "โกรธ",
+    "english": "ANGRY"
+  },
+  {
+    "thai": "ดีใจ",
+    "english": "GLAD"
+  },
+  {
+    "thai": "เสียใจ",
+    "english": "SAD"
+  },
+  {
+    "thai": "เหนื่อย",
+    "english": "TIRED"
+  },
+  {
+    "thai": "หิว",
+    "english": "HUNGRY"
+  },
+  {
+    "thai": "อิ่ม",
+    "english": "FULL"
+  },
+  {
+    "thai": "กลัว",
+    "english": "AFRAID"
+  },
+  {
+    "thai": "ป่วย",
+    "english": "SICK"
+  },
+  {
+    "thai": "บ้าน",
+    "english": "HOUSE"
+  },
+  {
+    "thai": "โรงเรียน",
+    "english": "SCHOOL"
+  },
+  {
+    "thai": "มหาวิทยาลัย",
+    "english": "UNIVERSITY"
+  },
+  {
+    "thai": "โรงพยาบาล",
+    "english": "HOSPITAL"
+  },
+  {
+    "thai": "ตลาด",
+    "english": "MARKET"
+  },
+  {
+    "thai": "วัด",
+    "english": "TEMPLE"
+  },
+  {
+    "thai": "ร้านอาหาร",
+    "english": "RESTAURANT"
+  },
+  {
+    "thai": "ห้องน้ำ",
+    "english": "TOILET"
+  },
+  {
+    "thai": "ห้องนอน",
+    "english": "BEDROOM"
+  },
+  {
+    "thai": "ที่ทำงาน",
+    "english": "WORKPLACE"
+  },
+  {
+    "thai": "หนังสือ",
+    "english": "BOOK"
+  },
+  {
+    "thai": "ปากกา",
+    "english": "PEN"
+  },
+  {
+    "thai": "โทรศัพท์",
+    "english": "PHONE"
+  },
+  {
+    "thai": "คอมพิวเตอร์",
+    "english": "COMPUTER"
+  },
+  {
+    "thai": "วิดีโอ",
+    "english": "VIDEO"
+  },
+  {
+    "thai": "กล้อง",
+    "english": "CAMERA"
+  },
+  {
+    "thai": "ภาพเคลื่อนไหว",
+    "english": "ANIMATION"
+  },
+  {
+    "thai": "ข้อมูล",
+    "english": "DATA"
+  },
+  {
+    "thai": "ข้าว",
+    "english": "RICE"
+  },
+  {
+    "thai": "น้ำ",
+    "english": "WATER"
+  },
+  {
+    "thai": "รถ",
+    "english": "CAR"
+  },
+  {
+    "thai": "เสื้อผ้า",
+    "english": "CLOTHES"
+  },
+  {
+    "thai": "ยา",
+    "english": "MEDICINE"
+  },
+  {
+    "thai": "โครงงาน",
+    "english": "PROJECT"
+  },
+  {
+    "thai": "ดี",
+    "english": "GOOD"
+  },
+  {
+    "thai": "เลว",
+    "english": "BAD"
+  },
+  {
+    "thai": "ใหญ่",
+    "english": "BIG"
+  },
+  {
+    "thai": "เล็ก",
+    "english": "SMALL"
+  },
+  {
+    "thai": "ร้อน",
+    "english": "HOT"
+  },
+  {
+    "thai": "เย็น",
+    "english": "COLD"
+  },
+  {
+    "thai": "เร็ว",
+    "english": "FAST"
+  },
+  {
+    "thai": "ช้า",
+    "english": "SLOW"
+  },
+  {
+    "thai": "มาก",
+    "english": "MUCH"
+  },
+  {
+    "thai": "น้อย",
+    "english": "LITTLE"
+  },
+  {
+    "thai": "อะไร",
+    "english": "WHAT"
+  },
+  {
+    "thai": "ใคร",
+    "english": "WHO"
+  },
+  {
+    "thai": "ที่ไหน",
+    "english": "WHERE"
+  },
+  {
+    "thai": "เมื่อไหร่",
+    "english": "WHEN"
+  },
+  {
+    "thai": "ทำไม",
+    "english": "WHY"
+  },
+  {
+    "thai": "ภาษามือ",
+    "english": "SIGN_LANGUAGE"
+  },
+  {
+    "thai": "ภาษา",
+    "english": "LANGUAGE"
+  },
+  {
+    "thai": "ใช้",
+    "english": "USE"
+  },
+  {
+    "thai": "มือ",
+    "english": "HAND"
+  },
+  {
+    "thai": "กิริยา",
+    "english": "BEHAVIOR"
+  },
+  {
+    "thai": "ใบหน้า",
+    "english": "FACE"
+  },
+  {
+    "thai": "คุย",
+    "english": "COMMUNICATE"
+  },
+  {
+    "thai": "บอก",
+    "english": "TELL"
+  },
+  {
+    "thai": "รู้สึก",
+    "english": "FEEL"
+  },
+  {
+    "thai": "หรือ",
+    "english": "OR"
+  },
+  {
+    "thai": "ต้องการ",
+    "english": "WANT"
+  }
+]

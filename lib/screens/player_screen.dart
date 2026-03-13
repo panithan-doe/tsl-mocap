@@ -6,14 +6,14 @@ import '../utils/vocab_mapper.dart';
 
 class PlayerScreen extends StatefulWidget {
   final List<MotionData> motionDataList;
-  final List<String> thaiTokens; // รายการคำภาษาไทยจาก Gemini (original)
-  final MergedSequence mergedSequence; // ข้อมูลที่ merge แล้ว
-  final String originalText; // ข้อความต้นฉบับที่ผู้ใช้ป้อนเข้ามา
+  final List<WordToken> tokens;
+  final MergedTokenSequence mergedSequence;
+  final String originalText;
 
   const PlayerScreen({
     super.key,
     required this.motionDataList,
-    required this.thaiTokens,
+    required this.tokens,
     required this.mergedSequence,
     required this.originalText,
   });
@@ -26,9 +26,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   MotionSequence? _sequence;
   bool _isLoading = true;
   String? _errorMessage;
-  int _currentClipIndex = 0; // track คำที่กำลังเล่นอยู่
+  int _currentClipIndex = 0; 
 
-  double _playbackFps = 50.0;
+  // สร้าง Key สำหรับควบคุม MotionPlayer จากภายนอก
+  final GlobalKey<MotionPlayerState> _playerKey = GlobalKey<MotionPlayerState>();
 
   @override
   void initState() {
@@ -43,7 +44,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       for (final motionData in widget.motionDataList) {
         final clip = MotionClip.fromJson(
           motionData.motionJson,
-          motionData.gloss,
+          motionData.word,
           isStill: motionData.isStill,
         );
         clips.add(clip);
@@ -65,85 +66,56 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: CustomScrollView(
-        slivers: [
-          // Modern App Bar
-          SliverAppBar(
-            expandedHeight: 100,
-            floating: false,
-            pinned: true,
-            automaticallyImplyLeading: false,
-            flexibleSpace: FlexibleSpaceBar(
-              centerTitle: true,
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
-                  ),
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Positioned(
-                      right: -30,
-                      top: -30,
-                      child: Container(
-                        width: 150,
-                        height: 150,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withAlpha(25),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(50),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ),
-                          const Spacer(),
-                          const Text(
-                            'Animation Player',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 24,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const Spacer(), 
-                          const SizedBox(width: 40),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Content
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: _buildBody(),
-          ),
-        ],
+      appBar: AppBar(
+  backgroundColor: Colors.white,
+  elevation: 0,
+  centerTitle: true,
+  
+  // 1. เพิ่มพื้นที่ความกว้างให้ปุ่มมากขึ้น (จาก 180 เป็น 220)
+  leadingWidth: 220, 
+  
+  leading: Padding(
+    // 2. ลด Padding ซ้ายลงนิดหน่อยเพื่อคืนพื้นที่ให้ข้อความ
+    padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8), 
+    child: TextButton.icon(
+      onPressed: () {
+        Navigator.pop(context);
+      },
+      icon: const Icon(Icons.arrow_back_rounded, size: 18),
+      label: const Text(
+        'ทดสอบประโยคใหม่',
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        // 3. บังคับให้อยู่บรรทัดเดียวเสมอ ถ้าล้นให้เป็น ... แทน
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
+      style: TextButton.styleFrom(
+        foregroundColor: const Color(0xFF3B82F6),
+        backgroundColor: Colors.blue.shade50.withOpacity(0.5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    ),
+  ),
+  
+  title: const Text(
+    'Animation Player',
+    style: TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: 20,
+      color: Color(0xFF1E293B),
+    ),
+  ),
+  bottom: PreferredSize(
+    preferredSize: const Size.fromHeight(1),
+    child: Container(color: Colors.grey.shade200, height: 1),
+  ),
+),
+      body: _buildBody(),
     );
   }
 
@@ -155,398 +127,109 @@ class _PlayerScreenState extends State<PlayerScreen> {
           children: [
             CircularProgressIndicator(color: Color(0xFF3B82F6)),
             SizedBox(height: 16),
-            Text(
-              'กำลังเตรียม Animation...',
-              style: TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 16,
-              ),
-            ),
+            Text('กำลังเตรียม Animation...', style: TextStyle(color: Color(0xFF64748B))),
           ],
         ),
       );
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.red.withAlpha(25),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEE2E2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    Icons.error_outline,
-                    color: Color(0xFFDC2626),
-                    size: 48,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'เกิดข้อผิดพลาด',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _errorMessage!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+      return Center(child: Text(_errorMessage!));
     }
 
     if (_sequence == null || _sequence!.clips.isEmpty) {
-      return Center(
-        child: Container(
-          padding: const EdgeInsets.all(32),
-          margin: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      return const Center(child: Text('ไม่มีข้อมูล Motion'));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ================= 1. ส่วน Header (ข้อความต้นฉบับ + Chips) =================
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center, // จัดให้อยู่กลางแนวตั้ง
             children: [
-              Icon(
-                Icons.hourglass_empty,
-                size: 64,
-                color: Colors.grey.shade300,
+              // เครื่องหมายคำพูดเปิด (ขนาดเล็กลง)
+              Transform.flip(
+                flipX: true,
+                child: Icon(
+                  Icons.format_quote_rounded,
+                  color: Colors.blue.shade300,
+                  size: 28, // ลดขนาดไอคอน
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(width: 12),
+              
+              // ข้อความต้นฉบับ
+              Text(
+                widget.originalText,
+                style: const TextStyle(
+                  fontSize: 26, // ลดขนาดตัวอักษรลงจาก 26 เป็น 20
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E293B),
+                  height: 1.2,
+                ),
+                maxLines: 2, // จำกัดบรรทัดเพื่อคุมความสูง (ถ้าข้อความยาวมากจะขึ้น ...)
+                overflow: TextOverflow.ellipsis,
+              ),
+              
+              const SizedBox(width: 12),
+              
+              // เครื่องหมายคำพูดปิด
+              Icon(
+                Icons.format_quote_rounded,
+                color: Colors.blue.shade300,
+                size: 28,
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 20),
+
+          // --- ส่วนของ Chips Motion (คำภาษาไทย) ---
+          
+          Row(
+            children: [
               const Text(
-                'ไม่มีข้อมูล Motion',
+                'ลำดับคำภาษาไทย',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF64748B),
                 ),
               ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(24), 
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ================= ฝั่งซ้าย: เครื่องเล่น Animation =================
-          Expanded(
-            flex: 6,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF1D4ED8).withAlpha(20),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-                border: Border.all(color: Colors.blue.shade50, width: 2),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: MotionPlayer(
-                    sequence: _sequence!,
-                    autoPlay: false,
-                    playbackFps: _playbackFps,
-                    thaiGroups: widget.mergedSequence.thaiGroups,
-                    onClipChange: (clipIndex) {
-                      setState(() {
-                        _currentClipIndex = clipIndex;
-                      });
-                    },
-                  ),
+              const SizedBox(width: 8),
+              // ตัว Tooltip สำหรับ Hover
+              Tooltip(
+                message: 'สีแดงคือคำที่ไม่มีใน Gloss Dictionary\nระบบจะทำการใช้ท่าทาง STILL ให้อัตโนมัติ',
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 24),
-
-          // ================= ฝั่งขวา: Context & Controls ในกล่องใหญ่กล่องเดียว =================
-          Expanded(
-            flex: 4,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF1D4ED8).withAlpha(20),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-                border: Border.all(color: Colors.blue.shade50, width: 2),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // --- Title ของฝั่งขวา ---
-                      const Row(
-                        children: [
-                          // Icon(Icons.analytics_outlined, color: Color(0xFF3B82F6), size: 24),
-                          SizedBox(width: 10),
-                          Text(
-                            'รายละเอียด',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E293B),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
-                      const SizedBox(height: 16),
-
-                      // 1. กล่องข้อความต้นฉบับ
-                      _buildOriginalTextCard(),
-                      const SizedBox(height: 16),
-
-                      // 2. Info Cards (รวม Motion, Frame, FPS เรียงแนวนอน 3 กล่อง)
-                      _buildInfoCards(),
-                      const SizedBox(height: 16),
-
-                      // 3. พื้นที่ Scroll ได้ สำหรับ Lists ด้านล่าง
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildGlossChips(),
-                              const SizedBox(height: 8),
-                              const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
-                              const SizedBox(height: 8),
-                              _buildDatabaseGlossBox(),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoCards() {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: _buildInfoCard(
-              icon: Icons.accessibility_new_outlined,
-              title: 'Total motions',
-              value: '${_sequence!.clips.length}',
-              unit: 'motions',
-              color: const Color(0xFF10B981),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildInfoCard(
-              icon: Icons.layers_outlined,
-              title: 'Total frames',
-              value: '${_sequence!.totalFrames}',
-              unit: 'frames',
-              color: const Color(0xFF3B82F6),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildFpsCompactCard(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required String unit,
-    required Color color,
-    Widget? bottomWidget,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC), // ปรับเป็นสีเทาอ่อนๆ เพื่อให้แยกจากพื้นหลังหลัก
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF64748B),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                textStyle: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4),
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.redAccent, // ใช้สีแดงเพื่อให้ล้อกับความหมายของชิป
+                  size: 18,
                 ),
               ),
             ],
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            unit,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFF94A3B8),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          if (bottomWidget != null) ...[
-            const Spacer(),
-            const SizedBox(height: 8),
-            bottomWidget,
-          ]
-        ],
-      ),
-    );
-  }
 
-  Widget _buildFpsCompactCard() {
-    return _buildInfoCard(
-      icon: Icons.speed_outlined,
-      title: 'Frame rate',
-      value: '${_playbackFps.round()}',
-      unit: 'fps',
-      color: const Color(0xFF8B5CF6),
-      bottomWidget: SizedBox(
-        height: 20,
-        child: SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: const Color(0xFF8B5CF6),
-            inactiveTrackColor: const Color(0xFFEDE9FE),
-            thumbColor: const Color(0xFF7C3AED),
-            trackHeight: 3.0,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-            overlayShape: const RoundSliderOverlayShape(overlayRadius: 12.0),
-          ),
-          child: Slider(
-            value: _playbackFps,
-            min: 5.0,
-            max: 60.0,
-            divisions: 11,
-            onChanged: (value) {
-              setState(() {
-                _playbackFps = value;
-              });
-            },
-          ),
-        ),
-      ),
-    );
-  }
+          const SizedBox(height: 8),
 
-  Widget _buildGlossChips() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 8), // ลด padding เดิมออก
-      decoration: const BoxDecoration(
-        color: Colors.transparent, 
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.accessibility_new,
-                color: Colors.blue,
-                size: 18,
-              ),
-              SizedBox(width: 8),
-              Text(
-                'ลำดับท่าทาง',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: List.generate(widget.thaiTokens.length, (index) {
-              final thaiWord = widget.thaiTokens[index];
-              final isUnknown = VocabMapper.isUnknownWord(thaiWord);
-              final displayWord = isUnknown
-                  ? VocabMapper.extractWord(thaiWord)
-                  : thaiWord;
+            children: List.generate(widget.tokens.length, (index) {
+              final token = widget.tokens[index];
+              final isUnknown = token.isUnknown;
+              final displayWord = token.word;
 
-              final currentOriginalIndices = _currentClipIndex <
-                      widget.mergedSequence.originalIndices.length
+              final currentOriginalIndices = _currentClipIndex < widget.mergedSequence.originalIndices.length
                   ? widget.mergedSequence.originalIndices[_currentClipIndex]
                   : <int>[];
               final isCurrentlyPlaying = currentOriginalIndices.contains(index);
@@ -604,8 +287,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       displayWord,
                       style: TextStyle(
                         color: textColor,
-                        fontWeight:
-                            isCurrentlyPlaying ? FontWeight.bold : FontWeight.w600,
+                        fontWeight: isCurrentlyPlaying ? FontWeight.bold : FontWeight.w600,
                         fontSize: 13,
                       ),
                     ),
@@ -614,114 +296,307 @@ class _PlayerScreenState extends State<PlayerScreen> {
               );
             }),
           ),
-        ],
-      ),
-    );
-  }
+          const SizedBox(height: 24),
 
-  Widget _buildOriginalTextCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC), // พื้นหลังอ่อนๆ ไม่กลืนกับสีขาวหลัก
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6).withAlpha(25),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.format_quote, color: Color(0xFF3B82F6), size: 18),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'ข้อความต้นฉบับ',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            widget.originalText,
-            style: const TextStyle(
-              fontSize: 18,
-              color: Color(0xFF1E293B),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDatabaseGlossBox() {
-    final dbGlosses = widget.mergedSequence.mergedGloss;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 8), // ลด padding เดิมออก
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.data_object,
-                color: Colors.purple,
-                size: 18,
-              ),
-              SizedBox(width: 8),
-              Text(
-                'Database Lookup Gloss',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: List.generate(dbGlosses.length, (index) {
-              final gloss = dbGlosses[index];
-              final displayGloss = gloss.isEmpty ? 'STILL' : gloss;
-              final isCurrentlyPlaying = index == _currentClipIndex;
-
-              final bgColor = isCurrentlyPlaying ? Colors.purple.shade600 : Colors.purple.shade50;
-              final textColor = isCurrentlyPlaying ? Colors.white : Colors.purple.shade700;
-              final borderColor = isCurrentlyPlaying ? Colors.purple.shade600 : Colors.purple.shade200;
-
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: borderColor, width: isCurrentlyPlaying ? 2 : 1),
-                ),
-                child: Text(
-                  displayGloss,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isCurrentlyPlaying ? FontWeight.bold : FontWeight.w600,
-                    color: textColor,
+          // ================= 2. ส่วน Content (ซ้าย 70% / ขวา 30%) =================
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ------ ฝั่งซ้าย: เครื่องเล่น Animation ------
+                Expanded(
+                  flex: 7, 
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: MotionPlayer(
+                          key: _playerKey, // ใส่ Key เพื่อให้ข้างนอกสั่ง Seek ได้
+                          sequence: _sequence!,
+                          autoPlay: false,
+                          thaiGroups: widget.mergedSequence.thaiGroups,
+                          onClipChange: (clipIndex) {
+                            setState(() {
+                              _currentClipIndex = clipIndex;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              );
-            }),
+
+                const SizedBox(width: 32),
+
+                // ------ ฝั่งขวา: Table of Contents (Framestamp) ------
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // หัวตาราง + Info Cards (ย้ายมาตรงนี้)
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'ลำดับท่าทาง (Gloss Sequence)',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              // --- Info Cards ฝั่งขวา (ใช้ Expanded ครอบเพื่อกันล้น) ---
+                              Row(
+                                children: [
+                                  // กล่องที่ 1: Total Motions
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey.shade200),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEFF6FF),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Icon(Icons.accessibility_new_outlined, color: Color(0xFF3B82F6), size: 16),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'Motions',
+                                                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                                ),
+                                                Text(
+                                                  '${widget.tokens.length}',
+                                                  style: const TextStyle(fontSize: 14, color: Color(0xFF3B82F6), fontWeight: FontWeight.bold),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  
+                                  const SizedBox(width: 12),
+                                  
+                                  // กล่องที่ 2: Total Frames
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey.shade200),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEFF6FF),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Icon(Icons.layers_outlined, color: Color(0xFF3B82F6), size: 16),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'Frames',
+                                                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                                ),
+                                                Text(
+                                                  '${_sequence!.totalFrames}',
+                                                  style: const TextStyle(fontSize: 14, color: Color(0xFF3B82F6), fontWeight: FontWeight.bold),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Divider(height: 1, thickness: 1),
+                        
+                        // ลิสต์รายการท่าทาง (Scrollable)
+                        Expanded(
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            itemCount: _sequence!.clips.length,
+                            separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                            itemBuilder: (context, index) {
+                              final clip = _sequence!.clips[index];
+                              final isCurrent = index == _currentClipIndex;
+                              // เช็คทั้งกรณีที่เป็นค่าว่าง และกรณีที่เป็นคำว่า STILL
+                              final displayGloss = clip.gloss.isEmpty
+                                  ? 'STILL' 
+                                  : clip.gloss;                              
+                              // ==========================================
+                              // 1. คำนวณ Start Frame และ End Frame ด้วยตัวเอง
+                              // ==========================================
+                              int calculatedStartFrame = 0;
+                              // วนลูปบวกจำนวนเฟรมของคลิปก่อนหน้าทั้งหมด
+                              for (int i = 0; i < index; i++) {
+                                // หากโค้ดคุณแจ้งเตือนที่ totalFrames ให้เปลี่ยนเป็น _sequence!.clips[i].frames.length แทนครับ
+                                calculatedStartFrame += _sequence!.clips[i].totalFrames; 
+                              }
+                              
+                              final int frameCount = clip.totalFrames; // จำนวนเฟรมของคลิปปัจจุบัน
+                              final int calculatedEndFrame = calculatedStartFrame + frameCount - 1;
+                              // ==========================================
+
+                              return InkWell(
+                                onTap: () {
+                                  _playerKey.currentState?.seekTo(calculatedStartFrame);
+                                },
+                                child: Container(
+                                  color: isCurrent ? Colors.blue.shade50.withOpacity(0.5) : Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), // ปรับ Vertical ให้กระชับขึ้น
+                                  child: IntrinsicHeight( // ใช้ IntrinsicHeight เพื่อให้ Row สูงตามเนื้อหาจริง
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch, // ยืดให้ความสูงไอคอนเท่ากับความสูงตัวอักษร 3 บรรทัด
+                                      children: [
+                                        // --- กล่องไอคอนฝั่งซ้าย (ปรับเป็นจัตุรัส) ---
+                                        AspectRatio(
+                                          aspectRatio: 1.0, // บังคับให้ กว้าง : สูง เป็น 1 : 1 (จัตุรัส)
+                                          child: Container(
+                                            // ลบ width ออก เพื่อให้ AspectRatio เป็นตัวกำหนดจากความสูงของแถว (IntrinsicHeight)
+                                            decoration: BoxDecoration(
+                                              color: isCurrent ? Color(0xFF3B82F6) : Colors.blue.shade50.withOpacity(0.5),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Center(
+                                              child: Icon(
+                                                isCurrent ? Icons.accessibility_new : Icons.accessibility_new_outlined,
+                                                color: isCurrent ? Colors.white : Colors.blue.shade300,
+                                                size: 24,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        
+                                        const SizedBox(width: 16),
+                                        
+                                        // --- เนื้อหา 3 บรรทัดฝั่งขวา ---
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisAlignment: MainAxisAlignment.center, // จัดให้อยู่กึ่งกลางแนวตั้งของกล่องไอคอน
+                                            children: [
+                                              // บรรทัดที่ 1: ชื่อ Motion (ENG) + Badge
+                                              Row(
+                                                children: [
+                                                  Flexible(
+                                                    child: Text(
+                                                      displayGloss,
+                                                      style: TextStyle(
+                                                        fontSize: 15,
+                                                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
+                                                        color: isCurrent ? const Color(0xFF1E293B) : const Color(0xFF475569),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (isCurrent) ...[
+                                                    const SizedBox(width: 12),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.blue,
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                      child: const Text(
+                                                        'Playing',
+                                                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                                      ),
+                                                    ),
+                                                  ]
+                                                ],
+                                              ),
+                                              
+                                              const SizedBox(height: 2), // ระยะห่างเล็กน้อยระหว่างบรรทัด
+                                              
+                                              // บรรทัดที่ 2: ชื่อคำไทย
+                                              // if (thaiWord.isNotEmpty)
+                                              //   Text(
+                                              //     thaiWord,
+                                              //     style: TextStyle(
+                                              //       fontSize: 13, 
+                                              //       color: isCurrent ? Colors.blue.shade700 : Colors.grey.shade600,
+                                              //       fontWeight: isCurrent ? FontWeight.w500 : FontWeight.normal,
+                                              //     ),
+                                              //   ),
+                                              
+                                              const SizedBox(height: 2),
+                                              
+                                              // บรรทัดที่ 3: Framestamp
+                                              Text(
+                                                'Frame: ${calculatedStartFrame + 1} - ${calculatedEndFrame + 1} • $frameCount frames',
+                                                style: TextStyle(
+                                                  fontSize: 12, 
+                                                  color: isCurrent ? Colors.blue.shade400 : Colors.grey.shade400,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

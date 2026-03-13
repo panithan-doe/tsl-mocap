@@ -1,15 +1,40 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import '../models/motion_models.dart';
 
-/// ผลลัพธ์จากการ merge consecutive STILL
+/// ผลลัพธ์จากการ merge consecutive STILL (รองรับ WordToken)
+class MergedTokenSequence {
+  /// กลุ่มคำภาษาไทยสำหรับแสดงผล - แต่ละ element คือ list ของคำที่ map กับ clip นั้น
+  /// เช่น [["ประเทศอังกฤษ"], ["ไป", "หนังสือ"], ["สอน"]]
+  final List<List<String>> thaiGroups;
+
+  /// WordToken ที่ merge แล้ว สำหรับ lookup motion (มี word + variant)
+  /// Unknown tokens จะถูก merge เป็น STILL token เดียว
+  final List<WordToken> mergedTokens;
+
+  /// mapping จาก clip index → original indices ใน tokens เดิม
+  /// เช่น [[0], [1, 2], [3]] หมายความว่า clip 1 มาจาก original index 1 และ 2
+  final List<List<int>> originalIndices;
+
+  MergedTokenSequence({
+    required this.thaiGroups,
+    required this.mergedTokens,
+    required this.originalIndices,
+  });
+
+  /// คำแสดงผลทั้งหมด (รวม [Unknown] suffix)
+  List<String> get displayWords => mergedTokens.map((t) => t.displayWord).toList();
+}
+
+/// ผลลัพธ์จากการ merge consecutive STILL (Legacy - รองรับ String)
 class MergedSequence {
   /// กลุ่มคำภาษาไทยสำหรับแสดงผล - แต่ละ element คือ list ของคำที่ map กับ clip นั้น
   /// เช่น [["ประเทศอังกฤษ"], ["ไป", "หนังสือ"], ["สอน"]]
   final List<List<String>> thaiGroups;
 
-  /// English gloss ที่ merge แล้ว สำหรับ lookup motion
-  /// เช่น ["ENGLISH", "", "TEACH"] (empty string = STILL)
-  final List<String> mergedGloss;
+  /// คำภาษาไทยที่ merge แล้ว สำหรับ lookup motion ใน R2
+  /// เช่น ["ประเทศอังกฤษ", "", "สอน"] (empty string = STILL)
+  final List<String> mergedThaiWords;
 
   /// mapping จาก clip index → original indices ใน thaiTokens เดิม
   /// เช่น [[0], [1, 2], [3]] หมายความว่า clip 1 มาจาก original index 1 และ 2
@@ -17,34 +42,33 @@ class MergedSequence {
 
   MergedSequence({
     required this.thaiGroups,
-    required this.mergedGloss,
+    required this.mergedThaiWords,
     required this.originalIndices,
   });
 }
 
 class VocabMapper {
-  Map<String, String> _thaiToEnglish = {};
   List<String> _thaiWords = [];
+  Map<String, dynamic> _glossMap = {};
   bool _isLoaded = false;
 
+  /// โหลดคลังคำศัพท์จาก gloss_map.json
   Future<void> loadVocab() async {
     if (_isLoaded) return;
 
-    final jsonString = await rootBundle.loadString('thai_eng_vocab.json');
-    final List<dynamic> vocabList = jsonDecode(jsonString);
+    final jsonString = await rootBundle.loadString('gloss_map.json');
+    final Map<String, dynamic> data = jsonDecode(jsonString);
+    _glossMap = data['gloss_map'] as Map<String, dynamic>;
 
-    for (final item in vocabList) {
-      final thai = item['thai'] as String;
-      final english = item['english'] as String;
-      _thaiToEnglish[thai] = english;
-      _thaiWords.add(thai);
-    }
-
+    // ดึงเฉพาะ keys (คำภาษาไทย) จาก gloss_map
+    _thaiWords = _glossMap.keys.toList();
     _isLoaded = true;
-
   }
 
   List<String> get thaiWords => _thaiWords;
+
+  /// Full glossMap พร้อมบริบทของแต่ละคำ
+  Map<String, dynamic> get glossMap => _glossMap;
 
   /// ตรวจสอบว่าคำมี [Unknown] suffix หรือไม่
   static bool isUnknownWord(String word) {
@@ -60,68 +84,44 @@ class VocabMapper {
     return word;
   }
 
-  List<String> mapThaiToEnglish(List<String> thaiWords) {
-    return thaiWords.map((word) {
-      // ถ้าเป็น empty string → ส่งต่อเป็น empty string (สำหรับ STILL animation)
-      if (word.isEmpty) {
-        return '';
-      }
-      // ถ้าคำมี [Unknown] suffix → ใช้ STILL animation
-      if (isUnknownWord(word)) {
-        return ''; // empty string จะถูก map เป็น STILL ใน motion_loader
-      }
-      return _thaiToEnglish[word] ?? '';
-    }).toList();
-  }
-
-  String? getEnglish(String thaiWord) {
-    return _thaiToEnglish[thaiWord];
-  }
-
-  /// Merge consecutive STILL (unknown words) into a single STILL
+  /// Merge consecutive unknown tokens into a single STILL
   ///
   /// Input:
-  /// - thaiTokens: ["ประเทศอังกฤษ", "ไป [Unknown]", "หนังสือ [Unknown]", "สอน"]
-  /// - englishGloss: ["ENGLISH", "", "", "TEACH"]
+  /// - tokens: [WordToken(ครู, v1), WordToken(ไป, unknown), WordToken(หนังสือ, unknown), WordToken(สอน, v2)]
   ///
-  /// Output (MergedSequence):
-  /// - thaiGroups: [["ประเทศอังกฤษ"], ["ไป", "หนังสือ"], ["สอน"]]
-  /// - mergedGloss: ["ENGLISH", "", "TEACH"]
+  /// Output (MergedTokenSequence):
+  /// - thaiGroups: [["ครู"], ["ไป", "หนังสือ"], ["สอน"]]
+  /// - mergedTokens: [WordToken(ครู, v1), WordToken(STILL), WordToken(สอน, v2)]
   /// - originalIndices: [[0], [1, 2], [3]]
-  static MergedSequence mergeConsecutiveStill(
-    List<String> thaiTokens,
-    List<String> englishGloss,
-  ) {
+  static MergedTokenSequence mergeConsecutiveStillTokens(List<WordToken> tokens) {
     final List<List<String>> thaiGroups = [];
-    final List<String> mergedGloss = [];
+    final List<WordToken> mergedTokens = [];
     final List<List<int>> originalIndices = [];
 
     List<String> currentGroup = [];
     List<int> currentIndices = [];
 
-    for (int i = 0; i < englishGloss.length; i++) {
-      final gloss = englishGloss[i];
-      final thaiWord = thaiTokens[i];
-      // ดึงคำภาษาไทยจริงๆ (ไม่รวม [Unknown] suffix)
-      final cleanThaiWord = extractWord(thaiWord);
+    for (int i = 0; i < tokens.length; i++) {
+      final token = tokens[i];
 
-      if (gloss.isEmpty) {
+      if (token.isUnknown) {
         // เป็น unknown/STILL → สะสมลงใน group
-        currentGroup.add(cleanThaiWord);
+        currentGroup.add(token.word);
         currentIndices.add(i);
       } else {
         // เป็นคำปกติ → ถ้ามี group สะสมอยู่ ให้ flush ก่อน
         if (currentGroup.isNotEmpty) {
           thaiGroups.add(List.from(currentGroup));
-          mergedGloss.add(''); // empty string = STILL
+          // สร้าง STILL token (word ว่าง)
+          mergedTokens.add(WordToken(word: '', variant: 'v1', isUnknown: true));
           originalIndices.add(List.from(currentIndices));
           currentGroup.clear();
           currentIndices.clear();
         }
 
         // เพิ่มคำปกติ
-        thaiGroups.add([cleanThaiWord]);
-        mergedGloss.add(gloss);
+        thaiGroups.add([token.word]);
+        mergedTokens.add(token);
         originalIndices.add([i]);
       }
     }
@@ -129,13 +129,64 @@ class VocabMapper {
     // ถ้ามี group หลงเหลือที่ท้าย sequence
     if (currentGroup.isNotEmpty) {
       thaiGroups.add(List.from(currentGroup));
-      mergedGloss.add(''); // empty string = STILL
+      mergedTokens.add(WordToken(word: '', variant: 'v1', isUnknown: true));
+      originalIndices.add(List.from(currentIndices));
+    }
+
+    return MergedTokenSequence(
+      thaiGroups: thaiGroups,
+      mergedTokens: mergedTokens,
+      originalIndices: originalIndices,
+    );
+  }
+
+  /// Legacy: Merge consecutive STILL (unknown words) into a single STILL
+  /// รองรับ List<String> แบบเดิม
+  static MergedSequence mergeConsecutiveStill(List<String> thaiTokens) {
+    final List<List<String>> thaiGroups = [];
+    final List<String> mergedThaiWords = [];
+    final List<List<int>> originalIndices = [];
+
+    List<String> currentGroup = [];
+    List<int> currentIndices = [];
+
+    for (int i = 0; i < thaiTokens.length; i++) {
+      final thaiWord = thaiTokens[i];
+      // ดึงคำภาษาไทยจริงๆ (ไม่รวม [Unknown] suffix)
+      final cleanThaiWord = extractWord(thaiWord);
+      final isUnknown = isUnknownWord(thaiWord);
+
+      if (isUnknown) {
+        // เป็น unknown/STILL → สะสมลงใน group
+        currentGroup.add(cleanThaiWord);
+        currentIndices.add(i);
+      } else {
+        // เป็นคำปกติ → ถ้ามี group สะสมอยู่ ให้ flush ก่อน
+        if (currentGroup.isNotEmpty) {
+          thaiGroups.add(List.from(currentGroup));
+          mergedThaiWords.add(''); // empty string = STILL
+          originalIndices.add(List.from(currentIndices));
+          currentGroup.clear();
+          currentIndices.clear();
+        }
+
+        // เพิ่มคำปกติ - ใช้ cleanThaiWord สำหรับ lookup
+        thaiGroups.add([cleanThaiWord]);
+        mergedThaiWords.add(cleanThaiWord);
+        originalIndices.add([i]);
+      }
+    }
+
+    // ถ้ามี group หลงเหลือที่ท้าย sequence
+    if (currentGroup.isNotEmpty) {
+      thaiGroups.add(List.from(currentGroup));
+      mergedThaiWords.add(''); // empty string = STILL
       originalIndices.add(List.from(currentIndices));
     }
 
     return MergedSequence(
       thaiGroups: thaiGroups,
-      mergedGloss: mergedGloss,
+      mergedThaiWords: mergedThaiWords,
       originalIndices: originalIndices,
     );
   }

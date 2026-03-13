@@ -169,3 +169,51 @@ class FrameInfo {
     this.aspectRatio = 1.0,
   });
 }
+
+/// Token ที่ได้จาก Gemini พร้อม variant ที่เลือก
+class WordToken {
+  final String word;
+  final String variant;
+  final bool isUnknown;
+
+  WordToken({
+    required this.word,
+    required this.variant,
+    this.isUnknown = false,
+  });
+
+  /// สร้างจาก JSON object {"word": "ครู", "variant": "v1"}
+  factory WordToken.fromJson(Map<String, dynamic> json) {
+    final word = json['word'] as String? ?? '';
+    final variant = json['variant'] as String? ?? 'v1';
+    final isUnknown = word.contains('[Unknown]') || json['unknown'] == true;
+
+    return WordToken(
+      word: isUnknown ? word.replaceAll(' [Unknown]', '').replaceAll('[Unknown]', '').trim() : word,
+      variant: variant,
+      isUnknown: isUnknown,
+    );
+  }
+
+  /// สร้าง Unknown token
+  factory WordToken.unknown(String word) {
+    return WordToken(
+      word: word.replaceAll(' [Unknown]', '').replaceAll('[Unknown]', '').trim(),
+      variant: 'v1',
+      isUnknown: true,
+    );
+  }
+
+  /// แปลงเป็น JSON
+  Map<String, dynamic> toJson() => {
+    'word': word,
+    'variant': variant,
+    'unknown': isUnknown,
+  };
+
+  /// คำแสดงผล (รวม [Unknown] ถ้าเป็น unknown)
+  String get displayWord => isUnknown ? '$word [Unknown]' : word;
+
+  @override
+  String toString() => 'WordToken(word: $word, variant: $variant, isUnknown: $isUnknown)';
+}

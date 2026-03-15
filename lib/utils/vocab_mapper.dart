@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
 import '../models/motion_models.dart';
@@ -59,25 +58,15 @@ class VocabMapper {
   Future<void> loadVocab({bool forceRefresh = false}) async {
     if (_isLoaded && !forceRefresh) return;
 
-    String jsonString;
+    // โหลดจาก Cloudflare R2
+    final r2Url = '${ApiConstants.cloudflareR2StorageBaseUrl}/gloss_map.json';
+    final response = await http.get(Uri.parse(r2Url));
 
-    try {
-      // โหลดจาก Cloudflare R2
-      final r2Url = '${ApiConstants.cloudflareR2StorageBaseUrl}/gloss_map.json';
-      final response = await http.get(Uri.parse(r2Url));
-
-      if (response.statusCode == 200) {
-        jsonString = response.body;
-      } else {
-        // Fallback to local asset if R2 fails
-        jsonString = await rootBundle.loadString('gloss_map.json');
-      }
-    } catch (e) {
-      // Fallback to local asset if network error
-      jsonString = await rootBundle.loadString('gloss_map.json');
+    if (response.statusCode != 200) {
+      throw Exception('ไม่สามารถโหลดคลังคำศัพท์ได้ (status: ${response.statusCode})');
     }
 
-    final Map<String, dynamic> data = jsonDecode(jsonString);
+    final Map<String, dynamic> data = jsonDecode(response.body);
     _glossMap = data['gloss_map'] as Map<String, dynamic>;
 
     // ดึงเฉพาะ keys (คำภาษาไทย) จาก gloss_map

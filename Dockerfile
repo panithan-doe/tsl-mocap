@@ -4,6 +4,11 @@
 # Stage 1: Build Flutter Web
 FROM ghcr.io/cirruslabs/flutter:3.41.4 AS build
 
+# Build arguments for environment variables
+ARG GEMINI_API_KEY
+ARG CLOUDFLARE_R2_BASE_URL
+ARG BACKEND_API_URL
+
 WORKDIR /app
 
 # Copy pubspec files first for caching
@@ -14,6 +19,12 @@ RUN flutter pub get
 
 # Copy the rest of the app
 COPY . .
+
+# Create .env file from build arguments
+RUN echo "GEMINI_API_KEY=${GEMINI_API_KEY}" > .env && \
+    echo "CLOUDFLARE_R2_BASE_URL=${CLOUDFLARE_R2_BASE_URL}" >> .env && \
+    echo "MOTION_STORAGE_MODE=r2" >> .env && \
+    echo "BACKEND_API_URL=${BACKEND_API_URL}" >> .env
 
 # Build for web release
 RUN flutter build web --release

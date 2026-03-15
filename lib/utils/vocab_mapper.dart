@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import '../constants/api_constants.dart';
 import '../models/motion_models.dart';
 
 /// ผลลัพธ์จากการ merge consecutive STILL (รองรับ WordToken)
@@ -52,11 +54,29 @@ class VocabMapper {
   Map<String, dynamic> _glossMap = {};
   bool _isLoaded = false;
 
-  /// โหลดคลังคำศัพท์จาก gloss_map.json
-  Future<void> loadVocab() async {
-    if (_isLoaded) return;
+  /// โหลดคลังคำศัพท์จาก gloss_map.json บน R2
+  /// forceRefresh: บังคับโหลดใหม่จาก R2 (สำหรับหลังเพิ่มคำใหม่)
+  Future<void> loadVocab({bool forceRefresh = false}) async {
+    if (_isLoaded && !forceRefresh) return;
 
-    final jsonString = await rootBundle.loadString('gloss_map.json');
+    String jsonString;
+
+    try {
+      // โหลดจาก Cloudflare R2
+      final r2Url = '${ApiConstants.cloudflareR2StorageBaseUrl}/gloss_map.json';
+      final response = await http.get(Uri.parse(r2Url));
+
+      if (response.statusCode == 200) {
+        jsonString = response.body;
+      } else {
+        // Fallback to local asset if R2 fails
+        jsonString = await rootBundle.loadString('gloss_map.json');
+      }
+    } catch (e) {
+      // Fallback to local asset if network error
+      jsonString = await rootBundle.loadString('gloss_map.json');
+    }
+
     final Map<String, dynamic> data = jsonDecode(jsonString);
     _glossMap = data['gloss_map'] as Map<String, dynamic>;
 

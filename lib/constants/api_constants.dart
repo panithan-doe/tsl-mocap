@@ -21,5 +21,11 @@ class ApiConstants {
       dotenv.env['MOTION_LOCAL_PATH'] ?? '';
 
   static bool get useLocalMotionStorage => motionStorageMode == 'local';
+
+  // Backend API URL for adding new words
+  // Local dev: http://localhost:8000
+  // Production: https://your-backend.railway.app
+  static String get backendApiUrl =>
+      dotenv.env['BACKEND_API_URL'] ?? 'http://localhost:8000';
 }
 

@@ -2,7 +2,7 @@
 # Multi-stage build: Flutter SDK -> Nginx
 
 # Stage 1: Build Flutter Web
-FROM ghcr.io/cirruslabs/flutter:3.29.2 AS build
+FROM ghcr.io/cirruslabs/flutter:3.41.4 AS build
 
 WORKDIR /app
 

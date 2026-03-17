@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../constants/api_constants.dart';
 
 /// Service สำหรับเชื่อมต่อกับ Python Backend API
@@ -127,6 +129,70 @@ class BackendService {
       return false;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// เพิ่มคำใหม่พร้อมอัปโหลดไฟล์วิดีโอ
+  ///
+  /// Parameters:
+  /// - word: คำภาษาไทย (เช่น "เกิน")
+  /// - context: บริบท/ความหมาย (เช่น "มากเกินไป")
+  /// - fileBytes: ข้อมูลไฟล์วิดีโอ (Uint8List)
+  /// - fileName: ชื่อไฟล์ (เช่น "video.mp4")
+  ///
+  /// Returns:
+  /// Map with keys: status, word, variant, context, message, motion_url
+  Future<Map<String, dynamic>> addWordWithFile({
+    required String word,
+    required String context,
+    required Uint8List fileBytes,
+    required String fileName,
+  }) async {
+    final url = Uri.parse('$baseUrl/api/add-word-upload');
+
+    try {
+      // สร้าง multipart request
+      final request = http.MultipartRequest('POST', url);
+
+      // เพิ่ม form fields
+      request.fields['word'] = word;
+      request.fields['context'] = context;
+
+      // หา MIME type จาก extension
+      final ext = fileName.split('.').last.toLowerCase();
+      final mimeType = switch (ext) {
+        'mp4' => MediaType('video', 'mp4'),
+        'mov' => MediaType('video', 'quicktime'),
+        'avi' => MediaType('video', 'x-msvideo'),
+        'webm' => MediaType('video', 'webm'),
+        _ => MediaType('video', 'mp4'),
+      };
+
+      // เพิ่มไฟล์
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'video_file',
+          fileBytes,
+          filename: fileName,
+          contentType: mimeType,
+        ),
+      );
+
+      // ส่ง request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['detail'] ?? 'Unknown error: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (e is http.ClientException) {
+        throw Exception('ไม่สามารถเชื่อมต่อ Backend ได้ กรุณาตรวจสอบว่า Server กำลังทำงานอยู่');
+      }
+      rethrow;
     }
   }
 }

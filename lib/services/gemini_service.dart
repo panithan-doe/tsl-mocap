@@ -9,16 +9,40 @@ class GeminiService {
   /// validWords เก็บ keys ของ glossMap สำหรับ validation
   late final Set<String> _validWordsSet;
 
+  /// API keys สำหรับการหมุนเวียนใช้งาน
+  late final List<String> _apiKeys;
+
+  /// ตำแหน่งปัจจุบันสำหรับ round-robin rotation
+  int _currentKeyIndex = 0;
+
   GeminiService({required this.glossMap}) {
     _validWordsSet = glossMap.keys.toSet();
+    _apiKeys = ApiConstants.geminiApiKeys;
+
+    if (_apiKeys.isEmpty) {
+      throw Exception('No Gemini API keys configured. Please add GEMINI_API_KEYS to .env');
+    }
+
+    print('GeminiService initialized with ${_apiKeys.length} API key(s)');
+  }
+
+  /// Get next API key using round-robin rotation
+  String _getNextApiKey() {
+    final key = _apiKeys[_currentKeyIndex];
+    _currentKeyIndex = (_currentKeyIndex + 1) % _apiKeys.length;
+    return key;
   }
 
   /// Tokenize ข้อความและ return List<WordToken> พร้อม variant ที่เลือก
   Future<List<WordToken>> tokenize(String inputText) async {
     final prompt = _buildPrompt(inputText);
 
+    // เลือก API key แบบ round-robin
+    final apiKey = _getNextApiKey();
+    final endpoint = ApiConstants.geminiEndpointWithKey(apiKey);
+
     final response = await http.post(
-      Uri.parse(ApiConstants.geminiEndpoint),
+      Uri.parse(endpoint),
       headers: {
         'Content-Type': 'application/json',
       },

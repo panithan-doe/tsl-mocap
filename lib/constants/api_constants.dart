@@ -1,12 +1,33 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConstants {
-  static String get geminiApiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
+  /// Get all Gemini API keys from .env (comma-separated)
+  /// Example: GEMINI_API_KEYS=key1,key2,key3
+  static List<String> get geminiApiKeys {
+    final keysStr = dotenv.env['GEMINI_API_KEYS'] ?? '';
+    if (keysStr.isEmpty) return [];
+
+    return keysStr
+        .split(',')
+        .map((key) => key.trim())
+        .where((key) => key.isNotEmpty)
+        .toList();
+  }
+
+  /// Legacy support for single key (deprecated)
+  static String get geminiApiKey {
+    final keys = geminiApiKeys;
+    return keys.isNotEmpty ? keys.first : '';
+  }
 
   static const String geminiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
-  static String get geminiEndpoint => '$geminiBaseUrl?key=$geminiApiKey';
+  /// Build endpoint with specific API key
+  static String geminiEndpointWithKey(String apiKey) => '$geminiBaseUrl?key=$apiKey';
+
+  /// Legacy endpoint (uses first key)
+  static String get geminiEndpoint => geminiEndpointWithKey(geminiApiKey);
 
   static String get cloudflareR2StorageBaseUrl =>
       dotenv.env['CLOUDFLARE_R2_BASE_URL'] ?? '';

@@ -3,8 +3,16 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class ApiConstants {
   /// Get all Gemini API keys from .env (comma-separated)
   /// Example: GEMINI_API_KEYS=key1,key2,key3
+  /// Fallback: รองรับ GEMINI_API_KEY (เอกพจน์) สำหรับ backward compatibility
   static List<String> get geminiApiKeys {
-    final keysStr = dotenv.env['GEMINI_API_KEYS'] ?? '';
+    // ลองอ่าน GEMINI_API_KEYS (พหูพจน์) ก่อน
+    String keysStr = dotenv.env['GEMINI_API_KEYS'] ?? '';
+
+    // ถ้าไม่มี ให้ fallback ไปใช้ GEMINI_API_KEY (เอกพจน์)
+    if (keysStr.isEmpty) {
+      keysStr = dotenv.env['GEMINI_API_KEY'] ?? '';
+    }
+
     if (keysStr.isEmpty) return [];
 
     return keysStr
